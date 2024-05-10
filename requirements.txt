@@ -10,6 +10,5 @@ scipy==1.2.3
 lws==1.2.7
 tensorboardX==2.5.1
 piq==0.7.0
-librosa=0.9.1
 torchvision
 numpy
