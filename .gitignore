@@ -10,6 +10,9 @@
 **/landmarkgenerator_checkpoint.pth
 **/renderer_checkpoint.pth
 
+# Videos
+**/tempfile_of_test_result
+
 ## PyTorch
 
 .coverage
