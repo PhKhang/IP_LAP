@@ -31,7 +31,8 @@ img_size = 128
 
 mp_face_mesh = mp.solutions.face_mesh
 drawing_spec = mp.solutions.drawing_utils.DrawingSpec(thickness=1, circle_radius=1)
-fa = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_HALF_D, flip_input=False, device='cuda')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+fa = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_HALF_D, flip_input=False, device='cpu')
 lip_index = [0, 17]  # the index of the midpoints of the upper lip and lower lip
 landmark_gen_checkpoint_path = args.landmark_gen_checkpoint_path
 renderer_checkpoint_path =args.renderer_checkpoint_path
@@ -409,10 +410,10 @@ for frame_idx in range(ref_img_full_face_landmarks.shape[0]):  # N
                                    connection_drawing_spec=drawing_spec)
     drawn_sketech = cv2.resize(drawn_sketech, (img_size, img_size))  # (128, 128, 3)
     ref_img_sketches.append(drawn_sketech)
-ref_img_sketches = torch.FloatTensor(np.asarray(ref_img_sketches) / 255.0).cuda().unsqueeze(0).permute(0, 1, 4, 2, 3)
+ref_img_sketches = torch.FloatTensor(np.asarray(ref_img_sketches) / 255.0).to(device).unsqueeze(0).permute(0, 1, 4, 2, 3)
 # (1,N, 3, 128, 128)
 ref_imgs = [cv2.resize(face.copy(), (img_size, img_size)) for face in ref_imgs]
-ref_imgs = torch.FloatTensor(np.asarray(ref_imgs) / 255.0).unsqueeze(0).permute(0, 1, 4, 2, 3).cuda()
+ref_imgs = torch.FloatTensor(np.asarray(ref_imgs) / 255.0).unsqueeze(0).permute(0, 1, 4, 2, 3).to(device)
 # (1,N,3,H,W)
 
 ##prepare output video strame##
@@ -464,8 +465,8 @@ for batch_idx, batch_start_idx in tqdm(enumerate(range(0, input_mel_chunks_len -
     T_pose = T_pose.unsqueeze(0)  # (1,T, 2,74)
 
     #landmark  generator inference
-    Nl_pose, Nl_content = Nl_pose.cuda(), Nl_content.cuda() # (Nl,2,74)  (Nl,2,57)
-    T_mels, T_pose = T_mels.cuda(), T_pose.cuda()
+    Nl_pose, Nl_content = Nl_pose.to(device), Nl_content.to(device) # (Nl,2,74)  (Nl,2,57)
+    T_mels, T_pose = T_mels.to(device), T_pose.to(device)
     with torch.no_grad():  # require    (1,T,1,hv,wv)(1,T,2,74)(1,T,2,57)
         predict_content = landmark_generator_model(T_mels, T_pose, Nl_pose, Nl_content)  # (1*T,2,57)
     T_pose = torch.cat([T_pose[i] for i in range(T_pose.size(0))], dim=0)  # (1*T,2,74)
@@ -487,11 +488,11 @@ for batch_idx, batch_start_idx in tqdm(enumerate(range(0, input_mel_chunks_len -
             show_sketch = cv2.resize(drawn_sketech, (frame_w, frame_h)).astype(np.uint8)
         T_target_sketches.append(torch.FloatTensor(drawn_sketech) / 255)
     T_target_sketches = torch.stack(T_target_sketches, dim=0).permute(0, 3, 1, 2)  # (T,3,128, 128)
-    target_sketches = T_target_sketches.unsqueeze(0).cuda()  # (1,T,3,128, 128)
+    target_sketches = T_target_sketches.unsqueeze(0).to(device)  # (1,T,3,128, 128)
 
     # 2.lower-half masked face
     ori_face_img = torch.FloatTensor(cv2.resize(T_crop_face[2], (img_size, img_size)) / 255).permute(2, 0, 1).unsqueeze(
-        0).unsqueeze(0).cuda()  #(1,1,3,H, W)
+        0).unsqueeze(0).to(device)  #(1,1,3,H, W)
 
     # 3. render the full face
     # require (1,1,3,H,W)   (1,T,3,H,W)  (1,N,3,H,W)   (1,N,3,H,W)  (1,1,1,h,w)

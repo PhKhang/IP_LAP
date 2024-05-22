@@ -91,14 +91,17 @@ class Fusion_transformer_encoder(nn.Module):
         position_v_encoding = self.position_v(pose_embedding)  # (1,  T, 512)
         position_a_encoding = self.position_a(mel_embedding)
 
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        
+
         #(2)  modality encoding
-        modality_v = self.modality(1 * torch.ones((pose_embedding.size(0), self.T), dtype=torch.int).cuda())
-        modality_a = self.modality(2 * torch.ones((mel_embedding.size(0),  self.T), dtype=torch.int).cuda())
+        modality_v = self.modality(1 * torch.ones((pose_embedding.size(0), self.T), dtype=torch.int).to(device))
+        modality_a = self.modality(2 * torch.ones((mel_embedding.size(0),  self.T), dtype=torch.int).to(device))
 
         pose_tokens = pose_embedding + position_v_encoding + modality_v    #(B , T, 512 )
         audio_tokens = mel_embedding + position_a_encoding + modality_a    #(B , T, 512 )
         ref_tokens = ref_embedding + self.modality(
-            3 * torch.ones((ref_embedding.size(0), ref_embedding.size(1)), dtype=torch.int).cuda())
+            3 * torch.ones((ref_embedding.size(0), ref_embedding.size(1)), dtype=torch.int).to(device))
 
         #(3) concat tokens
         input_tokens = torch.cat((ref_tokens, audio_tokens, pose_tokens), dim=1)  # (B, 1+T+T, 512 )
